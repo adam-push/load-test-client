@@ -1,0 +1,14 @@
+packaging:
+    add:
+        - target/load-subscriber-${project.version}.jar
+        - resources/churn.json
+        - resources/slow.json
+        - resources/ramp_up.json
+        - resources/soak.json
+        - resources/script.json
+        - resources/spike.json
+        - resources/script_debug.json
+tags:
+    - pushtechnology/load-subscriber:${project.version}
+    - pushtechnology/load-subscriber:latest
+
