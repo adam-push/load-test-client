@@ -1,0 +1,61 @@
+{
+    "actions": [
+        {
+            "name": "Measure pings",
+            "at_time": 0,
+            "action": "ping",
+            "params": {
+                "rate": 10
+            }
+        },
+        {
+            "name": "Ramp Up",
+            "at_time": 0,
+            "action": "connect",
+            "params": {
+                "url": "ws://localhost:8080",
+                "num_sessions": 500,
+                "rate": 100,
+                "topic_selector": "?Demos/Sportsbook/Football/England/.*/.*"
+            }
+        },
+        {
+            "name": "Close 250 quickly",
+            "at_time": 60,
+            "action": "close",
+            "params": {
+                "num_sessions": 250,
+                "rate": 0
+            }
+        },
+        {
+            "name": "Open 500 that self-terminate",
+            "at_time": 90,
+            "action": "connect",
+            "params": {
+                "url": "ws://localhost:8080",
+                "num_sessions": 500,
+                "rate": 25,
+                "session_lifecycle": {
+                    "active_for": [5, 15]
+                },
+                "topic_selector": "?Demos/Sportsbook/Football/England/.*/.*"
+            }
+        },
+        {
+            "name": "Close all remaining sessions",
+            "at_time": 120,
+            "action": "close",
+            "params": {
+                "num_sessions": 9999,
+                "rate": 0
+            }
+        },
+        {
+            "name": "End test",
+            "at_time": 130,
+            "action": "end"
+        }
+    ]   
+}
+    
