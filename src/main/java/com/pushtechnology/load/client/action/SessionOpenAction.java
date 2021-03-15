@@ -5,8 +5,11 @@
 package com.pushtechnology.load.client.action;
 
 import com.pushtechnology.diffusion.client.Diffusion;
+import com.pushtechnology.diffusion.client.callbacks.ErrorReason;
 import com.pushtechnology.diffusion.client.session.Session;
+import com.pushtechnology.diffusion.client.session.SessionEstablishmentException;
 import com.pushtechnology.diffusion.client.session.SessionFactory;
+import com.pushtechnology.diffusion.client.session.SessionSecurityException;
 import com.pushtechnology.load.client.Subscriber;
 import com.pushtechnology.load.client.callbacks.SessionOpenCallback;
 import com.pushtechnology.load.client.callbacks.SessionOpenCallbackParams;
@@ -18,6 +21,7 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
@@ -44,9 +48,13 @@ public class SessionOpenAction extends Action {
     private final AtomicInteger sessionSequence = new AtomicInteger(0);
     private boolean isDynamicPrincipal = false;
 
+    private final ExecutorService openServicePool;
+
     public SessionOpenAction(String name, SessionOpenConfig cfg) {
         super(name);
         this.config = cfg;
+
+        openServicePool = Executors.newFixedThreadPool((int) (cfg.getConnectRate() * 2));
 
         sessionFactory = Diffusion.sessions();
         if (cfg.getPrincipal() != null) {
@@ -110,6 +118,30 @@ public class SessionOpenAction extends Action {
         }
 
         SessionOpenCallbackParams cbParams = new SessionOpenCallbackParams(lifespan, config.getTopicSelector());
-        sessionFactory.open(config.getUrl(), cbParams, SESSION_OPEN_CALLBACK);
+
+        Runnable task = () -> {
+            Session session;
+
+            try {
+                session = sessionFactory.open(config.getUrl());
+                if(session == null) {
+                    SESSION_OPEN_CALLBACK.onError(cbParams, ErrorReason.CALLBACK_EXCEPTION);
+                } else {
+                    SESSION_OPEN_CALLBACK.onOpened(cbParams, session);
+                }
+            }
+            catch(IllegalArgumentException | IllegalStateException ex) {
+                SESSION_OPEN_CALLBACK.onError(cbParams, ErrorReason.INCOMPATIBLE_STATE);
+            }
+            catch(SessionEstablishmentException ex) {
+                SESSION_OPEN_CALLBACK.onError(cbParams, ErrorReason.COMMUNICATION_FAILURE);
+            }
+            catch(SessionSecurityException ex) {
+                SESSION_OPEN_CALLBACK.onError(cbParams, ErrorReason.ACCESS_DENIED);
+            }
+        };
+
+        openServicePool.execute(task);
     }
+
 }
